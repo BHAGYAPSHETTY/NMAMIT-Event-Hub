@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NMAMIT CampusSlot - Venue & Event Reservation Portal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top Session & Quick Role Switcher Bar -->
+  <aside class="role-bar no-print" aria-label="Auth and Role Bar">
+    <div class="container role-bar-inner">
+      <div class="role-status">
+        <span class="live-dot" id="authLiveDot"></span>
+        <span class="role-status-text" id="authStatusText">Signed In:</span>
+        <span id="currentRoleBadge" class="badge-role student">Student (@nmamit.in)</span>
+      </div>
+
+      <div class="role-actions">
+        <span class="role-hint">Quick Switch / Demo Login:</span>
+        <button type="button" onclick="quickLogin('student')" id="roleBtn-student" class="role-btn active" title="Login as Student">
+          🎓 Student (4nm21cs042@nmamit.in)
+        </button>
+        <button type="button" onclick="quickLogin('staff')" id="roleBtn-staff" class="role-btn" title="Login as Faculty">
+          👨‍🏫 Staff (prof.rajesh@nmamit.edu.in)
+        </button>
+        <button type="button" onclick="quickLogin('admin')" id="roleBtn-admin" class="role-btn" title="Login as Admin">
+          🛡️ Estate Admin (admin@nmamit.edu.in)
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Institution Header -->
+  <header class="main-header no-print">
+    <div class="container header-inner">
+      <div class="brand">
+        <div class="brand-crest">N</div>
+        <div class="brand-text">
+          <div class="brand-title-row">
+            <h1>NMAMIT CampusSlot</h1>
+            <span class="tag-nitte">NITTE</span>
+          </div>
+          <p>Centralized Venue Reservation Portal • Nitte, Karkala</p>
+        </div>
+      </div>
+
+      <!-- Navigation tabs -->
+      <div class="nav-actions">
+        <nav class="nav-tabs">
+          <button type="button" onclick="switchView('calendar')" id="tabBtn-calendar" class="tab-btn active">
+            📅 Common Calendar
+          </button>
+          <button type="button" onclick="switchView('freeVenues')" id="tabBtn-freeVenues" class="tab-btn">
+            🟢 Free Venues
+          </button>
+          <button type="button" onclick="switchView('venues')" id="tabBtn-venues" class="tab-btn">
+            🏛️ Venue Directory
+          </button>
+          <button type="button" onclick="switchView('approvals')" id="tabBtn-approvals" class="tab-btn">
+            📝 Approval Queue <span id="pendingCountBadge" class="badge-pill">2</span>
+          </button>
+        </nav>
+
+        <!-- User Profile / Login Button -->
+        <div class="auth-header-widget" id="authHeaderWidget">
+          <!-- Dynamically populated (User Info & Sign Out OR Sign In button) -->
+        </div>
+
+        <button type="button" onclick="handleBookVenueClick()" class="btn-primary">
+          <span class="btn-icon">+</span> Book Venue
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="container main-content">
+
+    <!-- KPI Stats Bar -->
+    <section class="stats-row no-print">
+      <div class="stat-card">
+        <div class="stat-icon icon-blue">🏛️</div>
+        <div>
+          <div class="stat-label">Campus Venues</div>
+          <div class="stat-val" id="statVenues">8 Locations</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-green">✅</div>
+        <div>
+          <div class="stat-label">Confirmed Bookings</div>
+          <div class="stat-val" id="statConfirmed">6 Booked</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-amber">⏳</div>
+        <div>
+          <div class="stat-label">Pending Admin Review</div>
+          <div class="stat-val text-amber" id="statPending">2 Requests</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-purple">🛡️</div>
+        <div>
+          <div class="stat-label">Active Flow</div>
+          <div class="stat-val-sm text-purple" id="statRoleDisplay">Student Flow (Needs Admin Approval)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 1: COMMON CALENDAR -->
+    <section id="viewCalendar" class="view-panel">
+      
+      <!-- Calendar Controls -->
+      <div class="card cal-controls-card no-print">
+        <div class="month-nav">
+          <div class="btn-group">
+            <button type="button" onclick="navigateMonth(-1)" class="btn-icon-nav" title="Previous Month">◀</button>
+            <button type="button" onclick="goToCurrentMonth()" class="btn-today">Today</button>
+            <button type="button" onclick="navigateMonth(1)" class="btn-icon-nav" title="Next Month">▶</button>
+          </div>
+          <h2 id="calendarMonthTitle" class="month-title">October 2026</h2>
+        </div>
+
+        <div class="cal-legend">
+          <div class="legend-item"><span class="dot dot-blue"></span> Confirmed Staff / Academic</div>
+          <div class="legend-item"><span class="dot dot-green"></span> Confirmed Student Club</div>
+          <div class="legend-item"><span class="dot dot-amber"></span> Pending Admin Clearance</div>
+          <div class="legend-item"><span class="dot dot-gray"></span> Cancelled / Slot Free</div>
+        </div>
+
+        <div class="view-toggles">
+          <button type="button" onclick="setCalDisplayMode('grid')" id="modeBtn-grid" class="toggle-btn active">Month Grid</button>
+          <button type="button" onclick="setCalDisplayMode('timeline')" id="modeBtn-timeline" class="toggle-btn">Venue Timeline</button>
+        </div>
+      </div>
+
+      <!-- Venue Filter Pills -->
+      <div class="card filter-card no-print">
+        <span class="filter-title">Filter Venue:</span>
+        <div class="pill-container">
+          <button type="button" onclick="filterByVenue('all')" class="venue-pill active" data-venue="all">All Venues (8)</button>
+          <button type="button" onclick="filterByVenue('Sambhram Auditorium')" class="venue-pill" data-venue="Sambhram Auditorium">Sambhram Auditorium</button>
+          <button type="button" onclick="filterByVenue('Sadananda Open Air Theatre')" class="venue-pill" data-venue="Sadananda Open Air Theatre">Sadananda OAT</button>
+          <button type="button" onclick="filterByVenue('B.C. Roy Seminar Hall')" class="venue-pill" data-venue="B.C. Roy Seminar Hall">B.C. Roy Hall</button>
+          <button type="button" onclick="filterByVenue('Phalguni Seminar Hall')" class="venue-pill" data-venue="Phalguni Seminar Hall">Phalguni Hall</button>
+          <button type="button" onclick="filterByVenue('Central Computing Facility (CCF)')" class="venue-pill" data-venue="Central Computing Facility (CCF)">CCF Labs</button>
+          <button type="button" onclick="filterByVenue('B.C. Alva Indoor Stadium')" class="venue-pill" data-venue="B.C. Alva Indoor Stadium">B.C. Alva Stadium</button>
+        </div>
+      </div>
+
+      <!-- Month Grid Container -->
+      <div id="calendarGridView" class="card cal-grid-card">
+        <div class="cal-header-row">
+          <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+        </div>
+        <div id="calendarCellsContainer" class="cal-days-grid">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <!-- Timeline View Container -->
+      <div id="calendarTimelineView" class="card cal-timeline-card hidden">
+        <div class="timeline-header">
+          <h3>Real-Time Venue Occupancy Matrix</h3>
+          <span id="timelineActiveDate">Date: Selected Day</span>
+        </div>
+        <div id="timelineVenueRows" class="timeline-rows-container">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- VIEW 2: LIVE FREE VENUES EXPLORER -->
+    <section id="viewFreeVenues" class="view-panel hidden">
+      <div class="card p-4">
+        <div class="free-venues-header">
+          <div>
+            <h2>🟢 Live Campus Venue Availability Explorer</h2>
+            <p>Select any date and time window to immediately see which campus auditoriums and halls are open and free to book.</p>
+          </div>
+          <div class="free-venues-controls">
+            <div class="control-group">
+              <label class="control-label" for="freeDateInput">Date</label>
+              <input type="date" id="freeDateInput" onchange="renderFreeVenuesExplorer()" class="form-input text-sm">
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="freeStartTimeInput">Start</label>
+              <input type="time" id="freeStartTimeInput" onchange="renderFreeVenuesExplorer()" value="10:00" class="form-input text-sm">
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="freeEndTimeInput">End</label>
+              <input type="time" id="freeEndTimeInput" onchange="renderFreeVenuesExplorer()" value="13:00" class="form-input text-sm">
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div class="availability-summary-bar" id="freeAvailabilitySummary">
+            <!-- Dynamic stats on free vs occupied -->
+          </div>
+          <div id="freeVenuesGrid" class="free-venues-grid">
+            <!-- Populated by JavaScript with green available and red occupied cards -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: VENUES DIRECTORY -->
+    <section id="viewVenues" class="view-panel hidden">
+      <div class="section-heading">
+        <h2>Campus Venues & Facilities</h2>
+        <p>Official locations approved for academic, cultural, and sports reservations at NMAMIT.</p>
+      </div>
+      <div id="venueCardsGrid" class="venues-grid">
+        <!-- Populated by JavaScript -->
+      </div>
+    </section>
+
+    <!-- VIEW 4: APPROVAL QUEUE -->
+    <section id="viewApprovals" class="view-panel hidden">
+      <div class="card p-4">
+        <div class="approval-header">
+          <div>
+            <h2>Admin Approval Desk & Request Queue</h2>
+            <p>Both Student (@nmamit.in) and Staff (@nmamit.edu.in) requests require official Estate Admin approval.</p>
+          </div>
+          <div class="admin-chip">
+            Active User: <b id="adminActiveRoleName">Student (Adithya Rao)</b>
+          </div>
+        </div>
+
+        <div id="approvalsListContainer" class="approvals-list">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- LOGIN / SIGN IN MODAL -->
+  <div id="loginModal" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal-dialog max-w-md">
+      <div class="modal-header">
+        <h3 class="modal-title">🔐 Sign In to NMAMIT CampusSlot</h3>
+        <button type="button" onclick="closeLoginModal()" class="modal-close">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="text-xs text-slate-500 mb-2">
+          Use your institutional NMAMIT email address to access venue booking privileges.
+        </p>
+
+        <!-- Domain Guidance -->
+        <div class="alert-box alert-info mb-3">
+          <div class="text-xs">
+            <b>Domain-based access:</b><br>
+            • Students: <code>*@nmamit.in</code><br>
+            • Faculty / Staff: <code>*@nmamit.edu.in</code><br>
+            • Estate Admin: <code>admin@nmamit.edu.in</code>
+          </div>
+        </div>
+
+        <form onsubmit="handleLoginFormSubmit(event)" class="space-y-3">
+          <div class="form-group">
+            <label class="form-label" for="loginEmail">Institutional Email</label>
+            <input type="email" id="loginEmail" required placeholder="e.g. 4nm21cs042@nmamit.in" class="form-input font-mono">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" required placeholder="••••••••" value="demo123" class="form-input">
+          </div>
+
+          <div class="pt-2">
+            <button type="submit" class="btn-primary w-full justify-center">Sign In</button>
+          </div>
+        </form>
+
+        <!-- 1-Click Quick Demo Login options -->
+        <div class="demo-login-section mt-4 pt-3 border-t">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Or One-Click Demo Sign In:</span>
+          <div class="flex flex-col gap-1.5">
+            <button type="button" onclick="performDemoLogin('student')" class="btn-demo-login student">
+              🎓 Sign in as Student (Adithya Rao - 4nm21cs042@nmamit.in)
+            </button>
+            <button type="button" onclick="performDemoLogin('staff')" class="btn-demo-login staff">
+              👨‍🏫 Sign in as Faculty (Prof. Rajesh K - prof.rajesh@nmamit.edu.in)
+            </button>
+            <button type="button" onclick="performDemoLogin('admin')" class="btn-demo-login admin">
+              🛡️ Sign in as Estate Admin (Estate Office - admin@nmamit.edu.in)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOOKING MODAL -->
+  <div id="bookingModal" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Book Campus Venue</h3>
+          <span id="modalRoleTag" class="badge-role student">Student Flow</span>
+        </div>
+        <button type="button" onclick="closeBookingModal()" class="modal-close">&times;</button>
+      </div>
+
+      <form id="bookingForm" onsubmit="handleBookingSubmit(event)" class="modal-body">
+        
+        <!-- Domain policy notice -->
+        <div id="domainAlertBox" class="alert-box alert-info">
+          <div class="alert-icon">ℹ️</div>
+          <div>
+            <div id="domainAlertTitle" class="alert-title">Venue Reservation Policy</div>
+            <div id="domainAlertDesc" class="alert-text">
+              Both Student and Staff reservations are submitted as <b>Pending</b> and require final clearance from the Estate Administrator.
+            </div>
+          </div>
+        </div>
+
+        <!-- Identity inputs -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="applicantName">Applicant Name</label>
+            <input type="text" id="applicantName" required class="form-input" value="Adithya Rao" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="applicantEmail">Institutional Email <span class="req">*</span></label>
+            <input type="email" id="applicantEmail" required oninput="validateEmailDomain(this.value)" class="form-input font-mono" value="4nm21cs042@nmamit.in" readonly>
+            <span id="emailDomainStatus" class="input-hint hint-success">Verified NMAMIT Domain</span>
+          </div>
+        </div>
+
+        <!-- Student specific fields -->
+        <div id="studentSpecificFields" class="form-row bg-slate-subtle p-3 rounded">
+          <div class="form-group">
+            <label class="form-label" for="clubName">USN / Club Name</label>
+            <input type="text" id="clubName" class="form-input" value="Turing Club / 4NM21CS042">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="facultyAdvisorEmail">Faculty Sponsor Email (@nmamit.edu.in)</label>
+            <input type="email" id="facultyAdvisorEmail" class="form-input font-mono" value="prof.rajesh@nmamit.edu.in">
+          </div>
+        </div>
+
+        <!-- Event details -->
+        <div class="form-group">
+          <label class="form-label" for="eventTitle">Event Title <span class="req">*</span></label>
+          <input type="text" id="eventTitle" required placeholder="e.g. Annual Hackathon 2026 Orientation" class="form-input" value="National AI Symposium - Keynote">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="eventCategory">Category</label>
+            <select id="eventCategory" class="form-select">
+              <option value="Technical">Technical / Workshop</option>
+              <option value="Cultural">Cultural / Fest</option>
+              <option value="Academic">Academic / Guest Lecture</option>
+              <option value="Sports">Sports Tournament</option>
+              <option value="Placement">Placement / Corporate</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="expectedFootfall">Expected Footfall</label>
+            <input type="number" id="expectedFootfall" min="10" max="4000" class="form-input" value="250">
+          </div>
+        </div>
+
+        <!-- Venue & Timings -->
+        <div class="form-row form-row-3">
+          <div class="form-group">
+            <label class="form-label" for="bookingVenue">Select Venue <span class="req">*</span></label>
+            <select id="bookingVenue" required onchange="runLiveConflictCheck()" class="form-select">
+              <option value="Sambhram Auditorium">Sambhram Auditorium (1500 cap)</option>
+              <option value="Sadananda Open Air Theatre">Sadananda OAT (3000 cap)</option>
+              <option value="B.C. Roy Seminar Hall">B.C. Roy Seminar Hall (250 cap)</option>
+              <option value="Phalguni Seminar Hall">Phalguni Seminar Hall (180 cap)</option>
+              <option value="Shambhavi Seminar Hall">Shambhavi Seminar Hall (120 cap)</option>
+              <option value="Central Computing Facility (CCF)">CCF Labs (300 cap)</option>
+              <option value="B.C. Alva Indoor Stadium">B.C. Alva Stadium (800 cap)</option>
+              <option value="College Main Ground">College Main Ground (4000 cap)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bookingDate">Date <span class="req">*</span></label>
+            <input type="date" id="bookingDate" required onchange="runLiveConflictCheck()" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Time Window</label>
+            <div class="time-range">
+              <input type="time" id="bookingStartTime" required onchange="runLiveConflictCheck()" value="10:00" class="form-input">
+              <span>to</span>
+              <input type="time" id="bookingEndTime" required onchange="runLiveConflictCheck()" value="13:00" class="form-input">
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Conflict Banner -->
+        <div id="conflictAlertBanner" class="alert-box hidden">
+          <!-- Dynamically filled -->
+        </div>
+
+        <!-- Facilities checklist -->
+        <div class="form-group">
+          <label class="form-label">Required Facilities & Equipment</label>
+          <div class="checkbox-grid">
+            <label class="checkbox-label"><input type="checkbox" id="reqAC" checked> Central AC</label>
+            <label class="checkbox-label"><input type="checkbox" id="reqPA" checked> PA Sound System</label>
+            <label class="checkbox-label"><input type="checkbox" id="reqProj" checked> 4K Projector</label>
+            <label class="checkbox-label"><input type="checkbox" id="reqMics" checked> Mics & Podium</label>
+          </div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="modal-footer">
+          <button type="button" onclick="closeBookingModal()" class="btn-secondary">Cancel</button>
+          <button type="submit" id="submitBookingBtn" class="btn-primary">Submit For Admin Approval</button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ADMIN DOUBLE CONFIRMATION MODAL -->
+  <div id="confirmApprovalModal" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal-dialog max-w-md">
+      <div class="modal-header bg-emerald-900">
+        <h3 class="modal-title">⚠️ Confirm Reservation Approval</h3>
+        <button type="button" onclick="closeConfirmModal()" class="modal-close">&times;</button>
+      </div>
+
+      <div class="modal-body space-y-3">
+        <p class="text-xs text-slate-600">
+          Are you sure you want to approve this reservation? Once approved, the venue slot will be officially booked and locked on the common campus calendar.
+        </p>
+
+        <!-- Summary of the event being approved -->
+        <div id="approvalTargetSummary" class="bg-slate-50 border p-3 rounded-lg text-xs space-y-1">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="alert-box alert-warning text-xs">
+          <b>Notice:</b> This will dispatch A/V technicians and notify the applicant that their gate pass is authorized.
+        </div>
+      </div>
+
+      <div class="modal-footer justify-between">
+        <button type="button" onclick="closeConfirmModal()" class="btn-secondary">
+          No, Go Back
+        </button>
+        <button type="button" onclick="executeConfirmedApproval()" class="btn-primary bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+          ✓ Yes, Confirm Approval
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EVENT DETAILS, CANCELLATION & POSTPONEMENT MODAL -->
+  <div id="eventDetailModal" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal-dialog max-w-md">
+      <div class="modal-header no-print">
+        <h3 class="modal-title">Event Clearance Slip & Actions</h3>
+        <button type="button" onclick="closeEventDetailModal()" class="modal-close">&times;</button>
+      </div>
+
+      <div class="modal-body" id="passContentArea">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Management Actions (Cancel / Postpone) -->
+      <div class="p-3 bg-slate-50 border-t border-slate-200 no-print" id="eventManagementActions">
+        <!-- Populated by JS: Cancel / Postpone buttons -->
+      </div>
+
+      <div class="modal-footer justify-between no-print">
+        <button type="button" onclick="window.print()" class="btn-dark">🖨️ Print Security Pass</button>
+        <button type="button" onclick="closeEventDetailModal()" class="btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POSTPONE / RESCHEDULE MODAL -->
+  <div id="postponeModal" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal-dialog max-w-md">
+      <div class="modal-header">
+        <h3 class="modal-title">📅 Postpone / Reschedule Event</h3>
+        <button type="button" onclick="closePostponeModal()" class="modal-close">&times;</button>
+      </div>
+
+      <form onsubmit="handlePostponeSubmit(event)" class="modal-body space-y-3">
+        <p class="text-xs text-slate-600">
+          Rescheduling this event will <b>immediately free the old venue slot</b> so others can book it, and move the event to the new selected time.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label" for="postponeDate">New Date <span class="req">*</span></label>
+          <input type="date" id="postponeDate" required class="form-input text-xs">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="postponeStart">New Start Time</label>
+            <input type="time" id="postponeStart" required value="10:00" class="form-input text-xs">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="postponeEnd">New End Time</label>
+            <input type="time" id="postponeEnd" required value="13:00" class="form-input text-xs">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" onclick="closePostponeModal()" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Confirm Reschedule & Free Old Slot</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastNotification" class="toast hidden">
+    <span id="toastIcon">✅</span>
+    <span id="toastMessage">Success</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
